@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { SchedulingResult } from '@/lib/diskSchedulingAlgorithms';
+import { Monitor } from 'lucide-react';
 
 interface DiskVisualizationProps {
   result: SchedulingResult | null;
@@ -20,17 +21,15 @@ export function DiskVisualization({
 }: DiskVisualizationProps) {
   const [animatedHead, setAnimatedHead] = useState(initialHead);
 
-  const width = 800;
-  const height = 400;
-  const padding = { top: 40, right: 40, bottom: 60, left: 60 };
+  const width = 850;
+  const height = 420;
+  const padding = { top: 50, right: 50, bottom: 70, left: 70 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  // Calculate positions
   const xScale = (cylinder: number) => padding.left + (cylinder / maxCylinder) * chartWidth;
   const yScale = (step: number) => padding.top + (step / Math.max(requests.length, 1)) * chartHeight;
 
-  // Build path data
   const pathData = useMemo(() => {
     if (!result || result.seekOperations.length === 0) return '';
     
@@ -41,7 +40,6 @@ export function DiskVisualization({
     return path;
   }, [result, initialHead, maxCylinder, requests.length]);
 
-  // Animated path
   const animatedPath = useMemo(() => {
     if (!result || currentStep <= 0) return '';
     
@@ -60,7 +58,6 @@ export function DiskVisualization({
     }
   }, [currentStep, result, initialHead]);
 
-  // Generate tick marks
   const xTicks = useMemo(() => {
     const ticks = [];
     const step = Math.ceil(maxCylinder / 10);
@@ -74,195 +71,225 @@ export function DiskVisualization({
   }, [maxCylinder]);
 
   return (
-    <div className="bg-card rounded-lg border border-border p-4 animate-fade-in">
-      <h3 className="text-lg font-mono font-semibold text-foreground mb-4 flex items-center gap-2">
-        <span className="w-3 h-3 rounded-full bg-primary animate-pulse-glow" />
-        Disk Head Movement
-      </h3>
+    <div className="glass-panel rounded-2xl p-6 hover-lift card-shine">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+            <Monitor className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Disk Head Movement</h3>
+            <p className="text-xs text-muted-foreground">Real-time visualization of seek operations</p>
+          </div>
+        </div>
+        
+        {isAnimating && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/30">
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+            <span className="text-xs font-medium text-success">Processing</span>
+          </div>
+        )}
+      </div>
       
-      <svg width={width} height={height} className="w-full" viewBox={`0 0 ${width} ${height}`}>
-        {/* Grid */}
-        <defs>
-          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="hsl(220 15% 15% / 0.5)" strokeWidth="0.5" />
-          </pattern>
-          <linearGradient id="pathGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="hsl(180 100% 50%)" stopOpacity="1" />
-            <stop offset="100%" stopColor="hsl(280 80% 60%)" stopOpacity="1" />
-          </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        
-        <rect x={padding.left} y={padding.top} width={chartWidth} height={chartHeight} fill="url(#grid)" />
-        
-        {/* X-axis */}
-        <line
-          x1={padding.left}
-          y1={height - padding.bottom}
-          x2={width - padding.right}
-          y2={height - padding.bottom}
-          stroke="hsl(var(--border))"
-          strokeWidth="2"
-        />
-        
-        {/* Y-axis */}
-        <line
-          x1={padding.left}
-          y1={padding.top}
-          x2={padding.left}
-          y2={height - padding.bottom}
-          stroke="hsl(var(--border))"
-          strokeWidth="2"
-        />
-        
-        {/* X-axis labels */}
-        {xTicks.map((tick) => (
-          <g key={tick}>
-            <line
-              x1={xScale(tick)}
-              y1={height - padding.bottom}
-              x2={xScale(tick)}
-              y2={height - padding.bottom + 5}
-              stroke="hsl(var(--muted-foreground))"
-            />
-            <text
-              x={xScale(tick)}
-              y={height - padding.bottom + 20}
-              textAnchor="middle"
-              fill="hsl(var(--muted-foreground))"
-              fontSize="12"
-              fontFamily="JetBrains Mono"
-            >
-              {tick}
-            </text>
-          </g>
-        ))}
-        
-        {/* X-axis title */}
-        <text
-          x={width / 2}
-          y={height - 10}
-          textAnchor="middle"
-          fill="hsl(var(--foreground))"
-          fontSize="14"
-          fontFamily="JetBrains Mono"
-        >
-          Cylinder Number
-        </text>
-        
-        {/* Y-axis title */}
-        <text
-          x={15}
-          y={height / 2}
-          textAnchor="middle"
-          fill="hsl(var(--foreground))"
-          fontSize="14"
-          fontFamily="JetBrains Mono"
-          transform={`rotate(-90, 15, ${height / 2})`}
-        >
-          Time Steps
-        </text>
-
-        {/* Ghost path (full path) */}
-        {pathData && (
-          <path
-            d={pathData}
-            fill="none"
-            stroke="hsl(var(--muted-foreground))"
-            strokeWidth="1"
-            strokeDasharray="4 4"
-            opacity="0.3"
+      <div className="bg-secondary/30 rounded-xl p-4 border border-border/30">
+        <svg width={width} height={height} className="w-full" viewBox={`0 0 ${width} ${height}`}>
+          <defs>
+            <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+              <path d="M 50 0 L 0 0 0 50" fill="none" stroke="hsl(222 30% 15% / 0.5)" strokeWidth="0.5" />
+            </pattern>
+            <linearGradient id="pathGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="hsl(173 80% 40%)" stopOpacity="1" />
+              <stop offset="100%" stopColor="hsl(262 83% 58%)" stopOpacity="1" />
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="softGlow">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          
+          <rect x={padding.left} y={padding.top} width={chartWidth} height={chartHeight} fill="url(#grid)" rx="8" />
+          
+          {/* Axes */}
+          <line
+            x1={padding.left}
+            y1={height - padding.bottom}
+            x2={width - padding.right}
+            y2={height - padding.bottom}
+            stroke="hsl(var(--border))"
+            strokeWidth="2"
           />
-        )}
-
-        {/* Animated path */}
-        {animatedPath && (
-          <path
-            d={animatedPath}
-            fill="none"
-            stroke="url(#pathGradient)"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            filter="url(#glow)"
-            className="transition-all duration-300"
+          <line
+            x1={padding.left}
+            y1={padding.top}
+            x2={padding.left}
+            y2={height - padding.bottom}
+            stroke="hsl(var(--border))"
+            strokeWidth="2"
           />
-        )}
-
-        {/* Request points */}
-        {requests.map((req, index) => {
-          const visited = result?.sequence.slice(0, currentStep).includes(req);
-          return (
-            <g key={`req-${index}`}>
-              <circle
-                cx={xScale(req)}
-                cy={yScale(result?.sequence.indexOf(req) ?? index + 1) + 1}
-                r="8"
-                fill={visited ? 'hsl(var(--primary))' : 'hsl(var(--secondary))'}
-                stroke={visited ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'}
-                strokeWidth="2"
-                className="transition-all duration-300"
-                filter={visited ? 'url(#glow)' : undefined}
+          
+          {/* X-axis labels */}
+          {xTicks.map((tick) => (
+            <g key={tick}>
+              <line
+                x1={xScale(tick)}
+                y1={height - padding.bottom}
+                x2={xScale(tick)}
+                y2={height - padding.bottom + 8}
+                stroke="hsl(var(--muted-foreground))"
+                strokeWidth="1"
               />
               <text
-                x={xScale(req)}
-                y={yScale(result?.sequence.indexOf(req) ?? index + 1) - 12}
+                x={xScale(tick)}
+                y={height - padding.bottom + 24}
                 textAnchor="middle"
-                fill="hsl(var(--foreground))"
-                fontSize="10"
+                fill="hsl(var(--muted-foreground))"
+                fontSize="11"
                 fontFamily="JetBrains Mono"
               >
-                {req}
+                {tick}
               </text>
             </g>
-          );
-        })}
-
-        {/* Initial head position */}
-        <g>
-          <circle
-            cx={xScale(initialHead)}
-            cy={yScale(0)}
-            r="10"
-            fill="hsl(var(--success))"
-            stroke="hsl(var(--success))"
-            strokeWidth="2"
-            filter="url(#glow)"
-          />
+          ))}
+          
+          {/* Axis titles */}
           <text
-            x={xScale(initialHead)}
-            y={yScale(0) - 15}
+            x={width / 2}
+            y={height - 15}
             textAnchor="middle"
-            fill="hsl(var(--success))"
-            fontSize="11"
-            fontWeight="bold"
-            fontFamily="JetBrains Mono"
+            fill="hsl(var(--foreground))"
+            fontSize="13"
+            fontFamily="Space Grotesk"
+            fontWeight="500"
           >
-            HEAD: {initialHead}
+            Cylinder Number
           </text>
-        </g>
+          <text
+            x={20}
+            y={height / 2}
+            textAnchor="middle"
+            fill="hsl(var(--foreground))"
+            fontSize="13"
+            fontFamily="Space Grotesk"
+            fontWeight="500"
+            transform={`rotate(-90, 20, ${height / 2})`}
+          >
+            Time Steps
+          </text>
 
-        {/* Current head position indicator */}
-        {isAnimating && currentStep > 0 && (
+          {/* Ghost path */}
+          {pathData && (
+            <path
+              d={pathData}
+              fill="none"
+              stroke="hsl(var(--muted-foreground))"
+              strokeWidth="1.5"
+              strokeDasharray="6 6"
+              opacity="0.25"
+            />
+          )}
+
+          {/* Animated path */}
+          {animatedPath && (
+            <path
+              d={animatedPath}
+              fill="none"
+              stroke="url(#pathGradient)"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              filter="url(#glow)"
+              className="transition-all duration-300"
+            />
+          )}
+
+          {/* Request points */}
+          {requests.map((req, index) => {
+            const visited = result?.sequence.slice(0, currentStep).includes(req);
+            const yPos = result?.sequence.indexOf(req) ?? index + 1;
+            return (
+              <g key={`req-${index}`}>
+                <circle
+                  cx={xScale(req)}
+                  cy={yScale(yPos) + 1}
+                  r="10"
+                  fill={visited ? 'hsl(var(--primary))' : 'hsl(var(--secondary))'}
+                  stroke={visited ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'}
+                  strokeWidth="2"
+                  className="transition-all duration-300"
+                  filter={visited ? 'url(#softGlow)' : undefined}
+                />
+                <text
+                  x={xScale(req)}
+                  y={yScale(yPos) - 16}
+                  textAnchor="middle"
+                  fill="hsl(var(--foreground))"
+                  fontSize="11"
+                  fontFamily="JetBrains Mono"
+                  fontWeight="500"
+                >
+                  {req}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Initial head position */}
           <g>
             <circle
-              cx={xScale(animatedHead)}
-              cy={yScale(currentStep)}
+              cx={xScale(initialHead)}
+              cy={yScale(0)}
               r="12"
-              fill="none"
-              stroke="hsl(var(--primary))"
-              strokeWidth="3"
-              className="animate-pulse-glow"
+              fill="hsl(var(--success))"
+              stroke="hsl(var(--success-foreground))"
+              strokeWidth="2"
+              filter="url(#glow)"
             />
+            <text
+              x={xScale(initialHead)}
+              y={yScale(0) - 20}
+              textAnchor="middle"
+              fill="hsl(var(--success))"
+              fontSize="11"
+              fontWeight="600"
+              fontFamily="JetBrains Mono"
+            >
+              HEAD: {initialHead}
+            </text>
           </g>
-        )}
-      </svg>
+
+          {/* Current head position indicator */}
+          {isAnimating && currentStep > 0 && (
+            <g>
+              <circle
+                cx={xScale(animatedHead)}
+                cy={yScale(currentStep)}
+                r="16"
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="3"
+                className="animate-pulse-glow"
+              />
+              <circle
+                cx={xScale(animatedHead)}
+                cy={yScale(currentStep)}
+                r="6"
+                fill="hsl(var(--primary))"
+              />
+            </g>
+          )}
+        </svg>
+      </div>
     </div>
   );
 }
